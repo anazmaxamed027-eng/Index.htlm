@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signal AI - Forex Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d0d12;
+            --card-bg: #1a1a24;
+            --card-bg-hover: #222230;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --accent-orange: #ff6b00;
+            --accent-green: #00ff88;
+            --accent-red: #ff3366;
+            --border-color: #2a2a3a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-primary); padding: 20px; display: flex; justify-content: center; min-height: 100vh; }
+        .dashboard { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: 20px; }
+
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+        .logo { font-weight: 700; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
+        .logo span { color: var(--accent-orange); }
+        .top-nav { display: flex; gap: 15px; background: var(--card-bg); padding: 8px 20px; border-radius: 20px; border: 1px solid var(--border-color); }
+        .top-nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; transition: color 0.3s; cursor: pointer; }
+        .top-nav a.active, .top-nav a:hover { color: var(--text-primary); }
+        .user-profile { display: flex; align-items: center; gap: 15px; }
+        .user-profile .icon { background: var(--card-bg); padding: 8px; border-radius: 50%; cursor: pointer; border: 1px solid var(--border-color); }
+
+        /* Settings Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+        .modal { background: var(--card-bg); padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; border: 1px solid var(--border-color); }
+        .modal h2 { margin-bottom: 20px; color: var(--accent-orange); }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: var(--text-secondary); }
+        .form-group input { width: 100%; padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: white; outline: none; }
+        .form-group input:focus { border-color: var(--accent-orange); }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
+        .btn-save { background: var(--accent-orange); color: white; }
+        .btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); }
+        .btn-save:hover { opacity: 0.8; }
+
+        /* Welcome Section */
+        .welcome-section { display: flex; justify-content: space-between; align-items: center; }
+        .welcome-section h1 { font-size: 1.5rem; font-weight: 600; }
+        .welcome-section p { color: var(--text-secondary); font-size: 0.9rem; margin-top: 5px; }
+        .btn-new-signal { background: var(--accent-orange); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: opacity 0.3s; }
+        .btn-new-signal:hover { opacity: 0.8; }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .stat-card { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); }
+        .stat-card .title { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .stat-card .value { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
+        .stat-card .change { font-size: 0.8rem; color: var(--accent-green); }
+        .stat-card .change.negative { color: var(--accent-red); }
+
+        /* Main Content Grid */
+        .main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; }
+        .card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border-color); padding: 20px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .card-header h3 { font-size: 1rem; font-weight: 600; }
+        .card-header a { color: var(--accent-orange); text-decoration: none; font-size: 0.8rem; }
+
+        /* Active Signals List */
+        .signal-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+        .signal-item:last-child { border-bottom: none; }
+        .signal-info { display: flex; align-items: center; gap: 12px; }
+        .signal-icon { width: 32px; height: 32px; border-radius: 50%; background: #2a2a3a; display: flex; justify-content: center; align-items: center; font-size: 0.8rem; font-weight: bold; }
+        .signal-icon.btc { background: #f7931a; color: white; }
+        .signal-icon.xau { background: #ffd700; color: black; }
+        .signal-icon.eur { background: #003399; color: white; }
+        .signal-details .pair { font-weight: 600; font-size: 0.9rem; }
+        .signal-details .time { font-size: 0.75rem; color: var(--text-secondary); }
+        .signal-confidence { font-size: 0.85rem; font-weight: 600; }
+        .signal-action { padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .signal-action.buy { background: rgba(0, 255, 136, 0.1); color: var(--accent-green); }
+        .signal-action.sell { background: rgba(255, 51, 102, 0.1); color: var(--accent-red); }
+
+        /* Market Sentiment */
+        .sentiment-circle { display: flex; justify-content: center; align-items: center; margin: 20px 0; position: relative; }
+        .circle-bg { width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(var(--accent-orange) 76%, #2a2a3a 0); display: flex; justify-content: center; align-items: center; }
+        .circle-inner { width: 130px; height: 130px; border-radius: 50%; background: var(--card-bg); display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .circle-inner .value { font-size: 2rem; font-weight: 700; }
+        .circle-inner .label { font-size: 0.8rem; color: var(--text-secondary); }
+        .sentiment-text { text-align: center; color: var(--text-secondary); font-size: 0.9rem; margin-top: 10px; }
+
+        /* Watchlist / Ticker */
+        .watchlist-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+        .watchlist-item:last-child { border-bottom: none; }
+        .watchlist-pair { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 0.9rem; }
+        .watchlist-price { display: flex; flex-direction: column; align-items: flex-end; }
+        .watchlist-price .price { font-weight: 600; font-size: 0.9rem; }
+        .watchlist-price .change { font-size: 0.75rem; }
+        .watchlist-price .change.up { color: var(--accent-green); }
+        .watchlist-price .change.down { color: var(--accent-red); }
+
+        /* Recent Trades */
+        .trade-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+        .trade-item:last-child { border-bottom: none; }
+
+        /* AI Chat Box */
+        .ai-chat-box { background: #1e1e2a; border-radius: 12px; padding: 15px; display: flex; align-items: center; gap: 15px; margin-top: 15px; border: 1px solid var(--border-color); }
+        .ai-icon { background: var(--accent-orange); width: 30px; height: 30px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; }
+        .ai-chat-input { background: transparent; border: none; color: var(--text-secondary); width: 100%; outline: none; font-size: 0.9rem; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .main-grid { grid-template-columns: 1fr; }
+            .top-nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Settings Modal (Godka VPS & Ticker) -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <h2>⚙️ Settings - Xiriirka VPS & Ticker</h2>
+            <div class="form-group">
+                <label>VPS IP ama Domain (Tusaale: 192.168.1.1 ama yourdomain.com)</label>
+                <input type="text" id="vpsInput" placeholder="Geli VPS IP-gaaga ama Domain-kaaga">
+            </div>
+            <div class="form-group">
+                <label>Ticker API Key (Tusaale: TwelveData ama FCS API)</label>
+                <input type="text" id="tickerInput" placeholder="Geli API Key-gaaga halkan">
+            </div>
+            <div class="form-group">
+                <label>Ticker API URL (Tusaale: https://api.twelvedata.com/price)</label>
+                <input type="text" id="apiUrlInput" placeholder="Geli API URL-kaaga">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-cancel" onclick="closeModal()">Jooji</button>
+                <button class="btn btn-save" onclick="saveSettings()">Keydi</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span>⚡</span> SIGNAL AI
+            </div>
+            <div class="top-nav">
+                <a href="#" class="active">Dashboard</a>
+                <a href="#">Signals</a>
+                <a href="#">Calendar</a>
+                <a href="#">Portfolio</a>
+                <a onclick="openModal()">Settings</a>
+            </div>
+            <div class="user-profile">
+                <div class="icon">🔔</div>
+                <div class="icon" onclick="openModal()">⚙️</div>
+            </div>
+        </header>
+
+        <!-- Welcome Section -->
+        <div class="welcome-section">
+            <div>
+                <h1>Good evening, Jordan</h1>
+                <p>Here is what your AI signals are indicating today.</p>
+            </div>
+            <button class="btn-new-signal">+ New Signal Feed</button>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="title">Portfolio Balance <span>📈</span></div>
+                <div class="value">$1,842.30</div>
+                <div class="change">+1.5% <span style="color: var(--text-secondary);">vs Last week</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="title">Active Signals <span>⚡</span></div>
+                <div class="value">16</div>
+                <div class="change negative">-2 vs Last week</div>
+            </div>
+            <div class="stat-card">
+                <div class="title">Win Rate (30 Days) <span>🎯</span></div>
+                <div class="value">71.4%</div>
+                <div class="change">+1.2% <span style="color: var(--text-secondary);">vs Last week</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="title">Total Balance <span>💰</span></div>
+                <div class="value">$54,208.11</div>
+                <div class="change">+1.2% <span style="color: var(--text-secondary);">vs Last week</span></div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Left Column -->
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- Active Signals -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Active Signals</h3>
+                        <a href="#">View Signals →</a>
+                    </div>
+                    <div class="signal-item">
+                        <div class="signal-info">
+                            <div class="signal-icon btc">₿</div>
+                            <div class="signal-details">
+                                <div class="pair">BTC/USD</div>
+                                <div class="time">15 min ago</div>
+                            </div>
+                        </div>
+                        <div class="signal-confidence">92%</div>
+                        <div class="signal-action buy">BUY</div>
+                    </div>
+                    <div class="signal-item">
+                        <div class="signal-info">
+                            <div class="signal-icon xau">Au</div>
+                            <div class="signal-details">
+                                <div class="pair">XAU/USD</div>
+                                <div class="time">32 min ago</div>
+                            </div>
+                        </div>
+                        <div class="signal-confidence">87%</div>
+                        <div class="signal-action buy">BUY</div>
+                    </div>
+                    <div class="signal-item">
+                        <div class="signal-info">
+                            <div class="signal-icon eur">€</div>
+                            <div class="signal-details">
+                                <div class="pair">EUR/USD</div>
+                                <div class="time">1 hr ago</div>
+                            </div>
+                        </div>
+                        <div class="signal-confidence">76%</div>
+                        <div class="signal-action sell">SELL</div>
+                    </div>
+                    <div class="signal-item">
+                        <div class="signal-info">
+                            <div class="signal-icon xau">Au</div>
+                            <div class="signal-details">
+                                <div class="pair">XAU/USD</div>
+                                <div class="time">2 hr ago</div>
+                            </div>
+                        </div>
+                        <div class="signal-confidence">85%</div>
+                        <div class="signal-action buy">BUY</div>
+                    </div>
+                </div>
+
+                <!-- Recent Trades -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Recent Trades</h3>
+                        <a href="#">View Portfolio →</a>
+                    </div>
+                    <div class="trade-item">
+                        <div class="watchlist-pair">
+                            <div class="signal-icon eur">€</div> EUR/USD
+                        </div>
+                        <div class="watchlist-price">
+                            <div class="price">1.0920</div>
+                            <div class="change up">+0.15%</div>
+                        </div>
+                    </div>
+                    <div class="trade-item">
+                        <div class="watchlist-pair">
+                            <div class="signal-icon xau">Au</div> XAU/USD
+                        </div>
+                        <div class="watchlist-price">
+                            <div class="price">$2,342.10</div>
+                            <div class="change up">+0.45%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- Market Sentiment -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Market Sentiment</h3>
+                        <span>⚙️</span>
+                    </div>
+                    <div class="sentiment-circle">
+                        <div class="circle-bg">
+                            <div class="circle-inner">
+                                <div class="value">76</div>
+                                <div class="label">GREED</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sentiment-text">
+                        Market sentiment is currently in Greed.
+                    </div>
+                </div>
+
+                <!-- Watchlist / Ticker -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Watchlist (Ticker)</h3>
+                        <a href="#">Manage</a>
+                    </div>
+                    <div class="watchlist-item">
+                        <div class="watchlist-pair">
+                            <div class="signal-icon btc">₿</div> BTC/USD
+                        </div>
+                        <div class="watchlist-price">
+                            <div class="price" id="btc-price">$67,342.20</div>
+                            <div class="change up" id="btc-change">+2.4%</div>
+                        </div>
+                    </div>
+                    <div class="watchlist-item">
+                        <div class="watchlist-pair">
+                            <div class="signal-icon eur">€</div> EUR/USD
+                        </div>
+                        <div class="watchlist-price">
+                            <div class="price" id="eur-price">1.0920</div>
+                            <div class="change down" id="eur-change">-0.1%</div>
+                        </div>
+                    </div>
+                    <div class="watchlist-item">
+                        <div class="watchlist-pair">
+                            <div class="signal-icon xau">Au</div> XAU/USD
+                        </div>
+                        <div class="watchlist-price">
+                            <div class="price" id="xau-price">$2,342.10</div>
+                            <div class="change up" id="xau-change">+0.5%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Chat Box -->
+        <div class="ai-chat-box">
+            <div class="ai-icon">🤖</div>
+            <input type="text" class="ai-chat-input" placeholder="Why is BTC bullish today? Ask anything about markets...">
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // --- SETTINGS LOGIC (VPS & Ticker) ---
+        function openModal() {
+            document.getElementById('settingsModal').style.display = 'flex';
+            
+            // Soo qaado xogta horey loo keydiyay (haddii ay jirto)
+            document.getElementById('vpsInput').value = localStorage.getItem('vpsIp') || '';
+            document.getElementById('tickerInput').value = localStorage.getItem('tickerApiKey') || '';
+            document.getElementById('apiUrlInput').value = localStorage.getItem('tickerApiUrl') || '';
+        }
+
+        function closeModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function saveSettings() {
+            const vps = document.getElementById('vpsInput').value;
+            const ticker = document.getElementById('tickerInput').value;
+            const apiUrl = document.getElementById('apiUrlInput').value;
+
+            localStorage.setItem('vpsIp', vps);
+            localStorage.setItem('tickerApiKey', ticker);
+            localStorage.setItem('tickerApiUrl', apiUrl);
+            
+            closeModal();
+            alert("✅ Xogta VPS & Ticker waa la keydiyay!");
+            
+            // Dib u cusboonaysii xogta ticker-ka haddii API key la geliyay
+            if (ticker) {
+                fetchRealData();
+            }
+        }
+
+        // --- TICKER LOGIC (Xogta Dhabta ah ama Demo) ---
+        async function fetchRealData() {
+            const apiKey = localStorage.getItem('tickerApiKey');
+            const apiUrl = localStorage.getItem('tickerApiUrl') || 'https://api.twelvedata.com/price';
+
+            if (!apiKey) {
+                console.log("Ma jiro API Key. Waa la isticmaalayaa Demo Data.");
+                updatePricesDemo(); // Haddii API key uusan jirin, demo isticmaal
+                return;
+            }
+
+            try {
+                // Tusaale: Soo qaado EUR/USD (Waxaad beddeli kartaa symbol-ka)
+                const response = await fetch(`${apiUrl}?symbol=EUR/USD&apikey=${apiKey}`);
+                const data = await response.json();
+                
+                if (data.price) {
+                    document.getElementById('eur-price').innerText = parseFloat(data.price).toFixed(4);
+                    // Halkan waxaad ku dari kartaa xogta BTC iyo XAU haddii API-gaagu taageero
+                }
+            } catch (error) {
+                console.error("Cilad ayaa ku timid soo qaadista xogta:", error);
+                updatePricesDemo(); // Haddii cilad dhacdo, demo isticmaal
+            }
+        }
+
+        // Demo function (haddii aan la hayn API Key)
+        function updatePricesDemo() {
+            const btcPriceElement = document.getElementById('btc-price');
+            let currentBtc = parseFloat(btcPriceElement.innerText.replace('$', '').replace(',', ''));
+            let changeBtc = (Math.random() - 0.5) * 100;
+            currentBtc += changeBtc;
+            btcPriceElement.innerText = '$' + currentBtc.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        // Bilow xogta marka boggu furmo
+        window.onload = function() {
+            // Hubi haddii API key horey loo keydiyay
+            if (localStorage.getItem('tickerApiKey')) {
+                fetchRealData();
+            } else {
+                // Demo ticker update (3 seconds kasta)
+                setInterval(updatePricesDemo, 3000);
+            }
+        };
+    </script>
+</body>
+</html>
